@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<beans xmlns="http://springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:security="http://www.springframework.org/schema/security"
+       xsi:schemaLocation="http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security.xsd
+http://www.springframework.org/schema/beans
+http://www.springframework.org/schema/beans/spring-beans.xsd">
+
+    <bean id="customAccessDenied" class="org.zerock.security.CustomAccessDeniedHandler"></bean>
+    <bean id="customLoginSuccess" class="org.zerock.security.CustomLoginSuccessHandler"></bean>
+    <bean id="bcryptPasswordEncoder" class="org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder"/>
+    <bean id="customUserDetailsService" class="org.zerock.security.CustomUserDetailService"></bean>
+
+<!--    <security:http auto-config="true" use-expressions="true">-->
+    <security:http>
+        <!-- p.618 접근제한 설정-->
+        <security:intercept-url pattern="/sample/all" access="permitAll"/>
+        <security:intercept-url pattern="/sample/member" access="hasRole('ROLE_MEMBER')"/>
+        <!-- p.624 admin 권한 설정 추가 -->
+        <security:intercept-url pattern="/sample/admin" access="hasRole('ROLE_ADMIN')"/>
+
+        <!-- p.626 접근제한 메시지 처리 -->
+        <!--  <security:access-denied-handler error-page="/accessError"/> -->
+        <security:access-denied-handler ref="customAccessDenied"/>
+
+        <!-- <security:form-login/> -->
+        <security:form-login login-page="/customLogin" authentication-success-handler-ref="customLoginSuccess"/>
+
+        <!-- <security:csrf disabled="true"/> -->
+
+        <security:remember-me
+                data-source-ref="dataSource" token-validity-seconds="604800" />
+
+        <!-- p.640 로그아웃 처리 -->
+        <!-- p.681 로그아웃 시 쿠키 삭제 delete-cookies 추가 -->
+        <security:logout logout-url="/customLogout"
+                         invalidate-session="true" delete-cookies="remember-me, JSESSION_ID"/>
+
+
+
+    </security:http>
+
+    <security:authentication-manager>
+        <!-- p.620 단순 로그인 처리 -->
+        <security:authentication-provider user-service-ref="customUserDetailsService">
+<!--            <security:user-service>-->
+<!--            <security:user name="member" password="{noop}member" authorities="ROLE_MEMBER"/> -->
+<!--            Admin 권한 설정 추가 -->
+<!--            <security:user name="admin" password="{noop}admin" authorities="ROLE_MEMBER, ROLE_ADMIN"/>-->
+<!--            </security:user-service>-->
+<!--            <security:jdbc-user-service data-source-ref="dataSource"/>-->
+            <security:jdbc-user-service data-source-ref="dataSource" users-by-username-query="select userid, userpw, enabled from tbl_member where userid = ?"
+                                        authorities-by-username-query="select userid, auth from tbl_member_auth where userid = ?"/>
+            <!-- change to Bcrypt <security:password-encoder ref="customPasswordEncoder"/> -->
+            <security:password-encoder ref="bcryptPasswordEncoder"/>
+        </security:authentication-provider>
+    </security:authentication-manager>
+
+
+</beans>
